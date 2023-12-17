@@ -56,6 +56,12 @@ class TicTacToe:
 
         return False
 
+    def restart(self):
+        self.board = [' '] * 9
+        self.current_player = 'X'
+        self.x_player_reward = 0
+        self.y_player_reward = 0
+
 
 if __name__ == "__main__":
     game = TicTacToe()
