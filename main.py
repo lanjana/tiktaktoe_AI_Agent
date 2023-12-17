@@ -23,6 +23,8 @@ if __name__ == '__main__':
 
         if done:
             game.restart()
+            agent1.epsilon *= agent1.epsilon_decay
+            agent2.epsilon *= agent2.epsilon_decay
             agent1.model.save("agent1.keras")
             agent2.model.save("agent2.keras")
             continue

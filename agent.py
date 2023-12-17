@@ -54,6 +54,7 @@ class TTT_Agent:
         if np.random.rand() < self.epsilon:
             action = np.random.randint(0, self.output_size)
         else:
+            state = state.reshape(-1,9)
             action = self.model.predict(state, verbose=0)[0]
             action = np.argmax(action)
 
