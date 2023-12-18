@@ -24,17 +24,19 @@ class TTT_Agent:
         self.min_epsilon = 0.01
         self.epsilon_decay = 0.99
 
-        # self.model = tf.keras.models.load_model('./agent2.keras')
+        # self.model = tf.keras.models.load_model('./agent1.keras')
         self.build_model()
 
     def build_model(self):
         self.model = tf.keras.Sequential()
         self.model.add(tf.keras.layers.Flatten(input_shape=(self.input_size,)))
-        self.model.add(tf.keras.layers.Dense(256, activation="relu"))
-        self.model.add(tf.keras.layers.Dense(self.output_size, activation='softmax'))
+        self.model.add(tf.keras.layers.Dense(128, activation="relu"))
+        self.model.add(tf.keras.layers.Dense(32, activation="relu"))
+        self.model.add(tf.keras.layers.Dense(
+            self.output_size, activation='softmax'))
 
         self.model.compile(
-            optimizer="adam", loss="categorial_crossentropy", metrics=["accuracy"])
+            optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
 
     def get_state(self, board):
         state = []
@@ -54,7 +56,7 @@ class TTT_Agent:
         if np.random.rand() < self.epsilon:
             action = np.random.randint(0, self.output_size)
         else:
-            state = state.reshape(-1,9)
+            state = state.reshape(-1, 9)
             action = self.model.predict(state, verbose=0)[0]
             action = np.argmax(action)
 
@@ -65,7 +67,21 @@ class TTT_Agent:
         return action
 
     def remember(self, reward, next_state, done):
+        if done:
+            Q_new = 0
+        else:
+            Q_new = 0
+
+        act_ind = np.argmax(self.action)
+        target = np.copy(self.action)
+        target[act_ind] = Q_new
+
+        self.memory.append((
+            self.state, self.action, target
+        ))
+
         self.memory.append((self.state, self.action, reward, next_state, done))
+
         if done:
             self.train(short_memory=False)
         else:
@@ -75,7 +91,7 @@ class TTT_Agent:
         if short_memory:
             sample = [self.memory[-1]]
         # elif len(self.memory) > self.batch_size:
-        #     sample = np.random.cho(self.memory, size=self.batch_size)
+        #     sample = np.random.choice(self.memory, size=self.batch_size)
         else:
             sample = self.memory
 
@@ -87,8 +103,8 @@ class TTT_Agent:
         next_states = np.array(next_states).reshape(-1, self.input_size)
         dones = np.array(dones).reshape(-1, 1)
 
-        # next_actions = self.model.predict(next_states, verbose=0)
-        Q_new = np.copy(rewards)
+        next_actions = self.model.predict(next_states, verbose=0)
+        Q_new = (1-self.gamma) * rewards
         Q_new = (1-self.gamma) * Q_new + (self.gamma) * Q_new
 
         targets = np.copy(actions)

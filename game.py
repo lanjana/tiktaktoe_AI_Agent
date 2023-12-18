@@ -8,6 +8,7 @@ class TicTacToe:
         self.y_player_reward = 0
 
     def display_board(self):
+        # pass
         for i in range(0, 9, 3):
             print(
                 f"{self.board[i]} | {self.board[i + 1]} | {self.board[i + 2]}")
@@ -21,7 +22,7 @@ class TicTacToe:
 
             return True
         else:
-            print("Invalid move. The position is already occupied.")
+            # print("Invalid move. The position is already occupied.")
             if self.current_player == "X":
                 self.x_player_reward = -1
             else:
@@ -75,8 +76,10 @@ if __name__ == "__main__":
                 if game.make_move(position):
                     continue
             else:
-                print("Invalid input. Please enter a number between 1 and 9.")
+                pass
+                # print("Invalid input. Please enter a number between 1 and 9.")
         except ValueError:
-            print("Invalid input. Please enter a number.")
+            pass
+            # print("Invalid input. Please enter a number.")
 
     game.display_board()
