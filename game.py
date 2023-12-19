@@ -6,6 +6,8 @@ class TicTacToe:
         self.current_player = 'X'
         self.x_player_reward = 0
         self.y_player_reward = 0
+        self.no_x_wins = 0
+        self.no_y_wins = 0
 
     def display_board(self):
         # pass
@@ -16,9 +18,15 @@ class TicTacToe:
                 print("-" * 9)
 
     def make_move(self, position):
+        self.x_player_reward = 0
+        self.y_player_reward = 0
         if self.board[position] == ' ':
             self.board[position] = self.current_player
             self.switch_player()
+            if self.current_player == "X":
+                self.x_player_reward = 1
+            else:
+                self.y_player_reward = 1
 
             return True
         else:
@@ -26,7 +34,7 @@ class TicTacToe:
             if self.current_player == "X":
                 self.x_player_reward = -1
             else:
-                self.y_player_reward = 0
+                self.y_player_reward = -1
 
             return False
 
@@ -34,6 +42,8 @@ class TicTacToe:
         self.current_player = 'O' if self.current_player == 'X' else 'X'
 
     def check_winner(self):
+        self.x_player_reward = 0
+        self.y_player_reward = 0
         win = False
         for i in range(0, 3):
             if (self.board[i] == self.board[i + 3] == self.board[i + 6] != ' ') or (self.board[i * 3] == self.board[i * 3 + 1] == self.board[i * 3 + 2] != ' '):
@@ -45,9 +55,11 @@ class TicTacToe:
 
         if win:
             if self.current_player == "X":
-                self.x_player_reward = 10
-            else:
                 self.y_player_reward = 10
+                self.no_y_wins += 1
+            else:
+                self.x_player_reward = 10
+                self.no_x_wins += 1
             return True
 
         if ' ' not in self.board:
@@ -62,24 +74,3 @@ class TicTacToe:
         self.current_player = 'X'
         self.x_player_reward = 0
         self.y_player_reward = 0
-
-
-if __name__ == "__main__":
-    game = TicTacToe()
-
-    while not game.check_winner():
-        game.display_board()
-        try:
-            position = int(
-                input(f"{game.current_player}'s turn. Enter position (1-9): ")) - 1
-            if 0 <= position <= 8:
-                if game.make_move(position):
-                    continue
-            else:
-                pass
-                # print("Invalid input. Please enter a number between 1 and 9.")
-        except ValueError:
-            pass
-            # print("Invalid input. Please enter a number.")
-
-    game.display_board()

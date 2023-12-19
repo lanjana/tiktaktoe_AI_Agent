@@ -22,7 +22,7 @@ class TTT_Agent:
 
         self.epsilon = 1
         self.min_epsilon = 0.01
-        self.epsilon_decay = 0.99
+        self.epsilon_decay = 0.999
 
         # self.model = tf.keras.models.load_model('./agent1.keras')
         self.build_model()
@@ -30,8 +30,8 @@ class TTT_Agent:
     def build_model(self):
         self.model = tf.keras.Sequential()
         self.model.add(tf.keras.layers.Flatten(input_shape=(self.input_size,)))
-        self.model.add(tf.keras.layers.Dense(128, activation="relu"))
-        self.model.add(tf.keras.layers.Dense(32, activation="relu"))
+        self.model.add(tf.keras.layers.Dense(256, activation="relu"))
+        self.model.add(tf.keras.layers.Dense(64, activation="relu"))
         self.model.add(tf.keras.layers.Dense(
             self.output_size, activation='softmax'))
 
@@ -51,13 +51,12 @@ class TTT_Agent:
         return np.array(state)
 
     def act(self, state):
-        self.state = state
+        self.state = np.array(state).reshape(-1, self.input_size)
 
         if np.random.rand() < self.epsilon:
             action = np.random.randint(0, self.output_size)
         else:
-            state = state.reshape(-1, 9)
-            action = self.model.predict(state, verbose=0)[0]
+            action = self.model.predict(self.state, verbose=0)[0]
             action = np.argmax(action)
 
         model_out = [0] * self.output_size
@@ -67,10 +66,12 @@ class TTT_Agent:
         return action
 
     def remember(self, reward, next_state, done):
+        next_state = np.array(next_state).reshape(-1, self.input_size)
         if done:
-            Q_new = 0
+            Q_new = reward
         else:
-            Q_new = 0
+            Q_next_state = np.max(self.model.predict(next_state, verbose=0)[0])
+            Q_new = reward + self.gamma*Q_next_state
 
         act_ind = np.argmax(self.action)
         target = np.copy(self.action)
@@ -79,8 +80,6 @@ class TTT_Agent:
         self.memory.append((
             self.state, self.action, target
         ))
-
-        self.memory.append((self.state, self.action, reward, next_state, done))
 
         if done:
             self.train(short_memory=False)
@@ -95,24 +94,11 @@ class TTT_Agent:
         else:
             sample = self.memory
 
-        states, actions, rewards, next_states, dones = zip(*sample)
+        states, actions, targets = zip(*sample)
 
         states = np.array(states).reshape(-1, self.input_size)
         actions = np.array(actions).reshape(-1, self.output_size)
-        rewards = np.array(rewards).reshape(-1, 1)
-        next_states = np.array(next_states).reshape(-1, self.input_size)
-        dones = np.array(dones).reshape(-1, 1)
-
-        next_actions = self.model.predict(next_states, verbose=0)
-        Q_new = (1-self.gamma) * rewards
-        Q_new = (1-self.gamma) * Q_new + (self.gamma) * Q_new
-
-        targets = np.copy(actions)
-        for ind in range(actions.shape[0]):
-            action_ind = np.argmax(targets[ind])
-            for i in range(3):
-                targets[ind, i] += -Q_new[ind]
-            targets[ind, action_ind] += 2*Q_new[ind]
+        targets = np.array(targets).reshape(-1, self.output_size)
 
         states = tf.convert_to_tensor(states, dtype=tf.float32)
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
