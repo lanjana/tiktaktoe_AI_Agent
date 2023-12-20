@@ -1,3 +1,4 @@
+import pickle as pk
 import tensorflow as tf
 import numpy as np
 from collections import deque
@@ -7,7 +8,7 @@ class TTT_Agent:
     def __init__(self, symbol):
         self.symbol = symbol
         self.learning_rate = 0.001
-        self.gamma = 0.95
+        self.gamma = 0.7
 
         self.input_size = 9
         self.output_size = 9
@@ -18,25 +19,28 @@ class TTT_Agent:
 
         self.batch_size = 1000
 
-        self.memory = deque(maxlen=10_000)
+        self.memory = deque(maxlen=100_000)
 
-        self.epsilon = 1
-        self.min_epsilon = 0.01
-        self.epsilon_decay = 0.999
+        self.epsilon = 0.01
+        self.min_epsilon = 0.001
+        self.epsilon_decay = 1
 
-        # self.model = tf.keras.models.load_model('./agent1.keras')
-        self.build_model()
+        self.model = tf.keras.models.load_model('./agent1.keras')
+        # self.build_model()
 
     def build_model(self):
         self.model = tf.keras.Sequential()
-        self.model.add(tf.keras.layers.Flatten(input_shape=(self.input_size,)))
-        self.model.add(tf.keras.layers.Dense(256, activation="relu"))
-        self.model.add(tf.keras.layers.Dense(64, activation="relu"))
+        # self.model.add(tf.keras.layers.Flatten(input_shape=(self.input_size,)))
         self.model.add(tf.keras.layers.Dense(
-            self.output_size, activation='softmax'))
+            350, activation="relu", input_shape=(self.input_size,)))
+        self.model.add(tf.keras.layers.Dense(250, activation="relu"))
+        self.model.add(tf.keras.layers.Dense(100, activation="relu"))
+        self.model.add(tf.keras.layers.Dense(50, activation="relu"))
 
-        self.model.compile(
-            optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+        self.model.add(tf.keras.layers.Dense(
+            self.output_size, activation='linear'))
+
+        self.model.compile(optimizer="adam", loss="mse")
 
     def get_state(self, board):
         state = []
@@ -54,37 +58,76 @@ class TTT_Agent:
         self.state = np.array(state).reshape(-1, self.input_size)
 
         if np.random.rand() < self.epsilon:
-            action = np.random.randint(0, self.output_size)
+            action = np.random.randint(self.output_size)
+            model_out = [0] * self.output_size
+            model_out[action] = 1
         else:
-            action = self.model.predict(self.state, verbose=0)[0]
-            action = np.argmax(action)
+            model_out = self.model.predict(self.state, verbose=0)[0]
+            action = np.argmax(model_out)
 
-        model_out = [0] * self.output_size
-        model_out[action] = 1
         self.action = model_out
 
         return action
 
     def remember(self, reward, next_state, done):
         next_state = np.array(next_state).reshape(-1, self.input_size)
-        if done:
-            Q_new = reward
-        else:
-            Q_next_state = np.max(self.model.predict(next_state, verbose=0)[0])
-            Q_new = reward + self.gamma*Q_next_state
-
-        act_ind = np.argmax(self.action)
-        target = np.copy(self.action)
-        target[act_ind] = Q_new
 
         self.memory.append((
-            self.state, self.action, target
+            self.state, self.action, reward, next_state, done
         ))
 
-        if done:
-            self.train(short_memory=False)
+        # if done:
+        #     self.train(short_memory=False)
+        # else:
+        #     self.train(short_memory=True)
+
+    def train2(self, short_memory):
+        if short_memory:
+            sample = [self.memory[-1]]
         else:
-            self.train(short_memory=True)
+            sample = self.memory
+
+        states, actions, rewards, next_states, dones = zip(*sample)
+
+        states = np.array(states).reshape(-1, self.input_size)
+        next_states = np.array(next_states).reshape(-1, self.input_size)
+        rewards = np.array(rewards).reshape(-1, 1)
+        actions = np.array(actions).reshape(-1, self.output_size)
+
+        next_rewards = self.model.predict(next_states, verbose=0)
+        targets = self.model.predict(states, verbose=0)
+
+        for ind in range(len(states)):
+            Q_new = rewards[ind]
+            if not dones[ind]:
+                Q_new = rewards[ind] + self.gamma * \
+                    np.max(next_rewards[ind])
+
+            action_ind = np.argmax(targets[ind])
+
+            targets[ind, action_ind] = Q_new
+
+        unoccupied = np.where(states != 0)
+        rows, cols = unoccupied
+        targets[rows, cols] = -10
+
+        # for r in rows:
+        #     for c in cols:
+        #         targets[r, c] = -10
+
+        states = tf.convert_to_tensor(states, dtype=tf.float32)
+        targets = tf.convert_to_tensor(targets, dtype=tf.float32)
+
+        self.model.fit(states, targets, epochs=100, batch_size=50)
+
+        self.model.save("./agent1.keras")
+        # with tf.GradientTape() as tape:
+        #     pred = self.model(states, training=True)
+        #     loss = self.loss(targets, pred)
+
+        # gradients = tape.gradient(loss, self.model.trainable_variables)
+        # self.optimizer.apply_gradients(
+        #     zip(gradients, self.model.trainable_variables))
 
     def train(self, short_memory):
         if short_memory:
@@ -94,19 +137,45 @@ class TTT_Agent:
         else:
             sample = self.memory
 
-        states, actions, targets = zip(*sample)
+        states, actions, rewards, next_states, dones = zip(*sample)
 
         states = np.array(states).reshape(-1, self.input_size)
+        next_states = np.array(next_states).reshape(-1, self.input_size)
+        rewards = np.array(rewards).reshape(-1, 1)
         actions = np.array(actions).reshape(-1, self.output_size)
-        targets = np.array(targets).reshape(-1, self.output_size)
+        next_rewards = self.model.predict(next_states, verbose=0)
 
         states = tf.convert_to_tensor(states, dtype=tf.float32)
-        actions = tf.convert_to_tensor(actions, dtype=tf.float32)
 
         with tf.GradientTape() as tape:
             pred = self.model(states, training=True)
+            targets = np.copy(pred)
+            for ind in range(len(states)):
+                Q_new = rewards[ind]
+                if not dones[ind]:
+                    Q_new = rewards[ind] + self.gamma * \
+                        np.max(next_rewards[ind])
+
+                action_ind = np.argmax(targets[ind])
+                targets[ind, action_ind] = Q_new
+
+            unoccupied = np.where(states != 0)
+            rows, cols = unoccupied
+            targets[rows, cols] = -10
+
+            targets = tf.convert_to_tensor(targets, dtype=tf.float32)
+
             loss = self.loss(targets, pred)
 
         gradients = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(
             zip(gradients, self.model.trainable_variables))
+
+
+if __name__ == '__main__':
+    agent = TTT_Agent("X")
+
+    with open("./data_sheet.pkl", "rb") as file:
+        agent.memory = pk.load(file)
+
+    agent.train2(short_memory=False)

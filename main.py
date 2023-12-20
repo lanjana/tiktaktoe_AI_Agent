@@ -1,12 +1,12 @@
 from agent import TTT_Agent
 from game import TicTacToe
 import numpy as np
+import pickle as pk
 
 
 if __name__ == '__main__':
     agent1 = TTT_Agent("X")
     agent2 = TTT_Agent("O")
-
     game = TicTacToe()
 
     count = 0
@@ -20,23 +20,25 @@ if __name__ == '__main__':
             next_state = agent1.get_state(game.board)
             done = game.check_winner()
             agent1.remember(reward, next_state, done)
+            agent1.train(short_memory=True)
 
         if done:
-            count += 1
             print(game.no_y_wins, game.no_x_wins,
                   count, round(agent1.epsilon, 3))
+            # agent1.train(short_memory=False)
             game.restart()
             agent1.epsilon *= agent1.epsilon_decay
             agent2.epsilon *= agent2.epsilon_decay
-            agent1.model.save("agent1.keras")
-            agent2.model.save("agent2.keras")
+            # agent1.model.save("agent1.keras")
+            # agent2.model.save("agent2.keras")
             continue
 
-        # game.display_board()
+        game.display_board()
         move, done = False, False
         while not (move or done):
-            # move = game.make_move(int(input("insert number")))
-            move = game.make_move(np.random.randint(9))
+            move = game.make_move(int(input("insert number")))
+            # move = game.make_move(np.random.choice(
+            # [ind for ind, value in enumerate(game.board) if value == " "]))
             done = game.check_winner()
             # state2 = agent2.get_state(game.board)
             # action2 = agent2.act(state2)
@@ -53,6 +55,6 @@ if __name__ == '__main__':
             game.restart()
             agent1.epsilon *= agent1.epsilon_decay
             agent2.epsilon *= agent2.epsilon_decay
-            agent1.model.save("agent1.keras")
-            agent2.model.save("agent2.keras")
+            # agent1.model.save("agent1.keras")
+            # agent2.model.save("agent2.keras")
             continue

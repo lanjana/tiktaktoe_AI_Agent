@@ -10,7 +10,6 @@ class TicTacToe:
         self.no_y_wins = 0
 
     def display_board(self):
-        # pass
         for i in range(0, 9, 3):
             print(
                 f"{self.board[i]} | {self.board[i + 1]} | {self.board[i + 2]}")
@@ -22,19 +21,19 @@ class TicTacToe:
         self.y_player_reward = 0
         if self.board[position] == ' ':
             self.board[position] = self.current_player
+            if self.current_player == "X":
+                self.x_player_reward = 0
+            else:
+                self.y_player_reward = 0
             self.switch_player()
-            if self.current_player == "X":
-                self.x_player_reward = 1
-            else:
-                self.y_player_reward = 1
-
             return True
+
         else:
-            # print("Invalid move. The position is already occupied.")
+            print("Invalid move. The position is already occupied.")
             if self.current_player == "X":
-                self.x_player_reward = -1
+                self.x_player_reward = -10
             else:
-                self.y_player_reward = -1
+                self.y_player_reward = -10
 
             return False
 
@@ -56,15 +55,17 @@ class TicTacToe:
         if win:
             if self.current_player == "X":
                 self.y_player_reward = 10
+                self.x_player_reward = 0
                 self.no_y_wins += 1
             else:
                 self.x_player_reward = 10
+                self.y_player_reward = 0
                 self.no_x_wins += 1
             return True
 
         if ' ' not in self.board:
-            self.x_player_reward = 2
-            self.y_player_reward = 2
+            self.x_player_reward = 0
+            self.y_player_reward = 0
             return True
 
         return False
@@ -72,5 +73,5 @@ class TicTacToe:
     def restart(self):
         self.board = [' '] * 9
         self.current_player = 'X'
-        self.x_player_reward = 0
-        self.y_player_reward = 0
+        self.x_player_reward = -2
+        self.y_player_reward = -2
