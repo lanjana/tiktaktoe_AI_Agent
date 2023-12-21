@@ -75,7 +75,7 @@ while True:
     game.display_board()
     move, done = False, False
     while not (move or done):
-        move = game.make_move(int(input("insert number")))
+        move = game.make_move(int(input("insert number"))-1)
         # move = game.make_move(np.random.choice(
         #     [ind for ind, value in enumerate(game.board) if value == " "]))
         done = game.check_winner()
