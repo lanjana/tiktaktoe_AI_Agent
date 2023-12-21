@@ -21,12 +21,12 @@ class TTT_Agent:
 
         self.memory = deque(maxlen=2_000)
 
-        self.epsilon = 1
+        self.epsilon = 0.1
         self.min_epsilon = 0.001
         self.epsilon_decay = 0.999
 
-        # self.model = tf.keras.models.load_model('./Models/agent1.keras')
-        self.build_model()
+        self.model = tf.keras.models.load_model('./Models/agent1.keras')
+        # self.build_model()
 
     def build_model(self):
         self.model = tf.keras.Sequential()
