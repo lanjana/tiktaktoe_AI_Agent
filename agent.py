@@ -7,8 +7,8 @@ from collections import deque
 class TTT_Agent:
     def __init__(self, symbol):
         self.symbol = symbol
-        self.learning_rate = 0.001
-        self.gamma = 0.7
+        self.learning_rate = 0.01
+        self.gamma = 0.95
 
         self.input_size = 9
         self.output_size = 9
@@ -19,14 +19,14 @@ class TTT_Agent:
 
         self.batch_size = 1000
 
-        self.memory = deque(maxlen=100_000)
+        self.memory = deque(maxlen=2_000)
 
-        self.epsilon = 0.01
+        self.epsilon = 1
         self.min_epsilon = 0.001
-        self.epsilon_decay = 1
+        self.epsilon_decay = 0.999
 
-        self.model = tf.keras.models.load_model('./agent1.keras')
-        # self.build_model()
+        # self.model = tf.keras.models.load_model('./Models/agent1.keras')
+        self.build_model()
 
     def build_model(self):
         self.model = tf.keras.Sequential()
@@ -70,8 +70,6 @@ class TTT_Agent:
         return action
 
     def remember(self, reward, next_state, done):
-        next_state = np.array(next_state).reshape(-1, self.input_size)
-
         self.memory.append((
             self.state, self.action, reward, next_state, done
         ))
@@ -100,8 +98,7 @@ class TTT_Agent:
         for ind in range(len(states)):
             Q_new = rewards[ind]
             if not dones[ind]:
-                Q_new = rewards[ind] + self.gamma * \
-                    np.max(next_rewards[ind])
+                Q_new = rewards[ind] + self.gamma * np.max(next_rewards[ind])
 
             action_ind = np.argmax(targets[ind])
 
@@ -111,23 +108,14 @@ class TTT_Agent:
         rows, cols = unoccupied
         targets[rows, cols] = -10
 
-        # for r in rows:
-        #     for c in cols:
-        #         targets[r, c] = -10
-
         states = tf.convert_to_tensor(states, dtype=tf.float32)
         targets = tf.convert_to_tensor(targets, dtype=tf.float32)
 
-        self.model.fit(states, targets, epochs=100, batch_size=50)
+        early_stopping = tf.keras.callbacks.EarlyStopping(
+            monitor='loss', patience=5, restore_best_weights=True)
 
-        self.model.save("./agent1.keras")
-        # with tf.GradientTape() as tape:
-        #     pred = self.model(states, training=True)
-        #     loss = self.loss(targets, pred)
-
-        # gradients = tape.gradient(loss, self.model.trainable_variables)
-        # self.optimizer.apply_gradients(
-        #     zip(gradients, self.model.trainable_variables))
+        self.model.fit(states, targets, epochs=100,
+                       batch_size=5, callbacks=[early_stopping])
 
     def train(self, short_memory):
         if short_memory:
@@ -157,7 +145,7 @@ class TTT_Agent:
                         np.max(next_rewards[ind])
 
                 action_ind = np.argmax(targets[ind])
-                targets[ind, action_ind] = Q_new
+                targets[ind, action_ind] += Q_new
 
             unoccupied = np.where(states != 0)
             rows, cols = unoccupied
@@ -170,12 +158,3 @@ class TTT_Agent:
         gradients = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(
             zip(gradients, self.model.trainable_variables))
-
-
-if __name__ == '__main__':
-    agent = TTT_Agent("X")
-
-    with open("./data_sheet.pkl", "rb") as file:
-        agent.memory = pk.load(file)
-
-    agent.train2(short_memory=False)

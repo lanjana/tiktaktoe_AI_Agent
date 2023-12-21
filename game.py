@@ -21,10 +21,6 @@ class TicTacToe:
         self.y_player_reward = 0
         if self.board[position] == ' ':
             self.board[position] = self.current_player
-            if self.current_player == "X":
-                self.x_player_reward = 0
-            else:
-                self.y_player_reward = 0
             self.switch_player()
             return True
 
@@ -54,11 +50,11 @@ class TicTacToe:
 
         if win:
             if self.current_player == "X":
-                self.y_player_reward = 10
+                self.y_player_reward = 5
                 self.x_player_reward = 0
                 self.no_y_wins += 1
             else:
-                self.x_player_reward = 10
+                self.x_player_reward = 5
                 self.y_player_reward = 0
                 self.no_x_wins += 1
             return True
